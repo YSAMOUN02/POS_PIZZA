@@ -274,7 +274,7 @@ async function printThermal(html, docNo, opts = {}) {
     // 3) binarize: every pixel → pure black or pure white (no dithering)
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const d = imgData.data;
-    const THRESHOLD = 190; // raise = darker/bolder print, lower = lighter
+    const THRESHOLD = 205; // raise = darker/bolder print, lower = lighter
     for (let i = 0; i < d.length; i += 4) {
         const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
         const v = lum < THRESHOLD ? 0 : 255;
@@ -368,20 +368,25 @@ function buildOrderDocketHtml(data, part, posInfo) {
     // Items are plain divs (NOT a <table>) on purpose: the shared thermal stylesheet
     // forces a border-bottom + fixed column widths on every <td>, which drew a line
     // through each item ("cut in half") and squeezed the layout. No line numbers.
-    const rows = (part.items || []).map((it) => {
+    const rows = (part.items || []).map((it, idx) => {
         const addons = (it.addons || []).length
             ? `<div style="font-size:17px; font-weight:400; line-height:1.4; padding-left:16px;">${(it.addons).map((a) => "+ " + escapeHtmlDocket(a)).join("<br>")}</div>`
             : "";
-        return `<div style="font-size:22px; font-weight:700; line-height:1.5; padding:2px 0;">${escapeHtmlDocket(it.name)} <span style="white-space:nowrap;">x${Number(it.qty)}</span>${addons}</div>`;
+        const variant = it.variant ? ` <span style="font-weight:700;">(${escapeHtmlDocket(it.variant)})</span>` : "";
+        return `<div style="font-size:22px; font-weight:700; line-height:1.5; padding:2px 0;">${idx + 1}. ${escapeHtmlDocket(it.name)}${variant} <span style="white-space:nowrap;">x${Number(it.qty)}</span>${addons}</div>`;
     }).join("");
 
-    // Sale-order / invoice no — its own line, a bit bigger (it's the reference staff read).
+    // The docket's own daily number is the kitchen "Waiting No" (what they call out).
+    // Strip the ORDER- prefix so it doesn't read as "Order" — the SALE ORDER document
+    // is the real "order", shown below as the sale-order no.
+    const waitingNo = String(data.order_no || "-").replace(/^ORDER[-\s]?/i, "");
+    // Sale-order / invoice no — its own line (it's the reference staff read).
     const saleRef = data.source_no
         ? `<div style="font-size:19px; font-weight:700; line-height:1.4; margin-top:2px;">${escapeHtmlDocket(data.source_no)}</div>`
         : "";
-    // Time & date sits on the line below the sale-order ref; order no is sized to match it.
+    // Time & date sits below the sale-order ref, sized to match it.
     const when = data.time_label
-        ? `<div style="font-size:15px; font-weight:400; line-height:1.4;">${escapeHtmlDocket(data.time_label)}</div>`
+        ? `<div style="font-size:19px; font-weight:400; line-height:1.4;">${escapeHtmlDocket(data.time_label)}</div>`
         : "";
 
     return `
@@ -389,7 +394,7 @@ function buildOrderDocketHtml(data, part, posInfo) {
     <div style="padding:2px 2px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; gap:6px; line-height:1.4;">
             <div style="font-size:26px; font-weight:700;">${escapeHtmlDocket(part.category)} <span style="font-size:14px; font-weight:400;">(${part.part}/${part.of})</span></div>
-            <div style="font-size:15px; font-weight:700; letter-spacing:1px; white-space:nowrap;">${escapeHtmlDocket(data.order_no || "-")}</div>
+            <div style="white-space:nowrap; text-align:right;"><span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Waiting No </span><span style="font-size:26px; font-weight:700; letter-spacing:1px;">${escapeHtmlDocket(waitingNo)}</span></div>
         </div>
         ${saleRef}
         ${when}
@@ -1045,12 +1050,8 @@ async function print_document_v2(document_type, header, posInfo, lines = null) {
         rawTableHtml = tableEl.innerHTML;
     }
 
-    // QR code
+    // QR code removed from the receipt per request.
     let qrHtml = "";
-    try {
-        const qrData = await prepareThermalImage("/assets/logo/qr_code.png", 150, 138);
-        qrHtml = `<img src="${qrData}" style="width:150px; image-rendering:pixelated;">`;
-    } catch (e) { /* QR missing, print without it */ }
 
 
     let logoHtml = "";
@@ -1087,8 +1088,11 @@ async function print_document_v2(document_type, header, posInfo, lines = null) {
         <tr><td class="v2-tl">${t.label}</td><td class="v2-tv">${t.value}</td></tr>
     `).join("");
     const grand = totals.find(t => t.grand);
-        // near the top of print_document_v2, after docNo:
-    const rate = header.factor ? Number(header.factor) : 0;
+    // Riel rate for the "Total (៛)" / "Change (៛)" lines. Use the page's real riel
+    // rate (window.POS_RIEL_RATE) — the order's header.factor is the DISPLAY factor
+    // (1 in USD mode), which made the riel total come out as round(usd/100)*100
+    // (e.g. $154.25 → 200៛). Fall back to header.factor only if the global isn't set.
+    const rate = Number(window.POS_RIEL_RATE) || (header.factor ? Number(header.factor) : 0);
     // cash received + change (from header, not DOM)
     const grandNum = parseFloat(header.grand_total) || 0;
     const paidNum  = parseFloat(header.paid_amount) || 0;
@@ -1126,13 +1130,13 @@ async function print_document_v2(document_type, header, posInfo, lines = null) {
 
 
 
-   const khrTotal = (rate > 0 && grand)
-    ? (() => {
-        const usd = parseFloat(String(grand.value).replace(/[^0-9.-]/g, "")) || 0;
-        const khr = Math.round((usd * rate) / 100) * 100;
-        return `<tr><td class="v2-tl">Total (៛)</td>
-               <td class="v2-tv" style="font-size:18px; font-weight:800;">${khr.toLocaleString("en-US")}៛</td></tr>`;
-      })()
+   // Riel total = USD grand total (header.grand_total) × riel rate — the same
+   // numeric source the change/khr calc uses. Parsing the formatted on-screen
+   // string was unreliable (space thousands-separators / display currency) and
+   // gave a wrong riel amount, so compute straight from the number.
+   const khrTotal = (rate > 0 && grandNum > 0)
+    ? `<tr><td class="v2-tl" style="font-size:18px;">Total (៛)</td>
+           <td class="v2-tv" style="font-size:24px; font-weight:800;">${(Math.round((grandNum * rate) / 100) * 100).toLocaleString("en-US")}៛</td></tr>`
     : "";
     const html = `
         ${style_thermal_v2}
@@ -1308,7 +1312,7 @@ let style_thermal_v2 = `
     .v2-items th, .v2-items th * { color:#000 !important; }
     .v2-items td {
         border:none; border-bottom:1px dashed #000;
-        padding:8px 3px; font-size:14px; font-weight:700;
+        padding:8px 3px; font-size:16px; font-weight:700;
         overflow:hidden; word-wrap:break-word;
         text-align:center; vertical-align:middle;
     }
@@ -1317,7 +1321,7 @@ let style_thermal_v2 = `
 
     .v2-items th:nth-child(1), .v2-items td:nth-child(1) { width:5%; }
     .v2-items th:nth-child(2), .v2-items td:nth-child(2) { width:37%; }
-    .v2-items td:nth-child(2) { font-size:13px; }
+    .v2-items td:nth-child(2) { font-size:15px; }
     .v2-items th:nth-child(3), .v2-items td:nth-child(3) { width:11%; }
     .v2-items th:nth-child(4), .v2-items td:nth-child(4) { width:11%; }
     .v2-items th:nth-child(5), .v2-items td:nth-child(5) { width:12%; }
@@ -1330,7 +1334,7 @@ let style_thermal_v2 = `
         padding:6px 10px; margin-top:10px;
     }
     .v2-ttable { width:100%; border-collapse:collapse; table-layout:fixed; }
-    .v2-ttable td { border:none; padding:4px 2px; font-size:15px; font-weight:700; }
+    .v2-ttable td { border:none; padding:4px 2px; font-size:17px; font-weight:700; }
     .v2-tl { text-align:left; width:65%; }
     .v2-tv { text-align:right; width:35%; }
 

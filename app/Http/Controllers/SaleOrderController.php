@@ -127,7 +127,16 @@ public function getSaleOrders(Request $request)
             return response()->json([], 404);
         }
 
-        $lines = $saleOrder->lines->map(function ($line) {
+        // Resolve add-on recipe-line ids → names so the receipt can print each
+        // chosen add-on under its item (saved lines only store the ids).
+        $addonNameMap = $saleOrder->lines
+            ->flatMap(fn($l) => (array) ($l->addon_line_ids ?? []))
+            ->filter()->unique()->values()
+            ->pipe(fn($ids) => $ids->isNotEmpty()
+                ? \App\Models\ProductRecipeLine::whereIn('id', $ids)->pluck('addon_name', 'id')
+                : collect());
+
+        $lines = $saleOrder->lines->map(function ($line) use ($addonNameMap) {
             $quantity = (float) ($line->quantity ?? 0);
             $quantity_shiped = (float) ($line->quantity_shiped ?? 0);
             $sellPrice = (float) ($line->sell_price ?? 0);
@@ -137,11 +146,16 @@ public function getSaleOrders(Request $request)
             $subTotal = $quantity * $sellPrice;
             $grandTotal = ($subTotal - $discountAmount) + $vatAmount;
 
+            $addonNames = collect((array) ($line->addon_line_ids ?? []))
+                ->map(fn($aid) => $addonNameMap[$aid] ?? null)
+                ->filter()->values()->all();
+
             return [
                 'id' => $line->id,
                 'item_code' => $line->item_code ?? '',
                 'name' => $line->name ?? '',
                 'variant' => $line->variant ?? '',   // shown in parens on prints
+                'attribute_label' => $addonNames ? implode(', ', $addonNames) : '',  // add-ons under the item
                 'quantity' => $quantity,
                 'quantity_shiped' => $quantity_shiped,
                 'unit' => $line->unit ?? '',
@@ -224,7 +238,9 @@ public function getSaleOrders(Request $request)
                 return response()->json(['message' => 'Invoice not found'], 404);
             }
             $orderNo  = $doc->order_no;
-            $sourceNo = $doc->invoice_number;    // invoice no at the invoice stage
+            // Docket always references the SALE ORDER no (not the invoice no), even
+            // at the invoice stage — the kitchen tracks orders by the sale-order no.
+            $sourceNo = optional(SaleOrderHeader::find($doc->sale_order_id))->document_no ?? $doc->invoice_number;
             $lines    = $doc->lines;
             $date     = $doc->invoice_date;
         } else {
@@ -246,11 +262,23 @@ public function getSaleOrders(Request $request)
             ? \App\Models\ProductRecipeLine::whereIn('id', $addonIds)->pluck('addon_name', 'id')
             : collect();
 
+        // Kitchen docket is cooking products only — resale goods / drinks that the
+        // kitchen doesn't prepare must not print. Look up which line products are
+        // cooking_product; anything else is skipped below.
+        $cookingIds = \App\Models\Product::whereIn('id', collect($lines)->pluck('product_id')->filter()->unique())
+            ->where('type', 'cooking_product')
+            ->pluck('id')
+            ->flip();   // id => index, for O(1) isset() lookup
+
         // Group lines into parts by category, preserving first-seen category order.
         $parts = [];
         foreach ($lines as $line) {
             $qty = (float) ($line->quantity ?? 0);
             if ($qty <= 0) {
+                continue;
+            }
+            // Cooking products only (see $cookingIds above).
+            if (!isset($cookingIds[$line->product_id])) {
                 continue;
             }
             $cat = trim((string) ($line->category_name ?? '')) ?: 'Uncategorised';

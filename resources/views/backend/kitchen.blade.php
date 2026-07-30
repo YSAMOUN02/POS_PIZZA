@@ -819,11 +819,11 @@
                             <div class="flex items-center gap-1.5">
                                 <p id="recipeProductLabel" class="text-xs text-gray-500">&nbsp;</p>
                                 {{-- Rename just the variant label (e.g. "M" → "Medium"); the dish name
-                                     and its grouping stay the same. Locked while the variant is live. --}}
+                                     and its grouping stay the same. --}}
                                 <button type="button" id="recipeRenameBtn" onclick="renameVariant()"
                                     title="Rename this variant"
-                                    class="text-gray-400 hover:text-sky-600 text-xs">
-                                    <i class="fa-solid fa-pen"></i>
+                                    class="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-600 hover:text-sky-600 hover:border-sky-300 font-semibold">
+                                    <i class="fa-solid fa-pen"></i> Rename
                                 </button>
                             </div>
                         </div>

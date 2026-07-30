@@ -100,6 +100,11 @@ class AdminController extends Controller
         $currency_default = Currency::where('is_default', 1)->first();
         $factor = $currency_default ? $currency_default->factor : 1;
         $currency_name = $currency_default ? $currency_default->code : 'USD';
+        // Riel exchange rate (USD → ៛), used ONLY for the receipt's "Total (៛)"
+        // convenience line. It must be the riel currency's own factor, independent
+        // of the order's display factor (which is 1 in USD mode) — otherwise the
+        // riel total came out as round(usd/100)*100 (e.g. $154.25 → 200៛).
+        $riel_rate = (float) (Currency::where('code', '៛')->value('factor') ?? 0);
 
 
          $posInfoForPrint = PosProfile::where('user_report', auth()->id())->first();
@@ -114,7 +119,7 @@ class AdminController extends Controller
             ? 'list'
             : 'grid';
 
-        return view('backend.pos', compact('categories', 'currency', 'factor', 'currency_name', 'top_products', 'posInfoForPrint', 'productViewMode'));
+        return view('backend.pos', compact('categories', 'currency', 'factor', 'currency_name', 'riel_rate', 'top_products', 'posInfoForPrint', 'productViewMode'));
     }
 
 
@@ -195,6 +200,8 @@ class AdminController extends Controller
             'categories'    => $categories,
             'factor'        => $currencyDefault ? $currencyDefault->factor : 1,
             'currency_name' => $currencyDefault ? $currencyDefault->code : 'USD',
+            // Riel rate for the receipt's "Total (៛)" line — see getProducts()/pos view.
+            'riel_rate'     => (float) (Currency::where('code', '៛')->value('factor') ?? 0),
         ]);
     }
 

@@ -5101,6 +5101,9 @@ let sale_order_header_for_print = null;
 window.addEventListener("pass_sale_header", async (event) => {
     const header = event.detail.header ?? event.detail[0]?.header;
     const posInfo = event.detail.posInfo ?? event.detail[0]?.posInfo;
+    // Taking payment on an existing order shouldn't re-print the kitchen docket
+    // (it printed when the order was first placed).
+    const skipDocket = event.detail.skip_docket ?? event.detail[0]?.skip_docket ?? false;
 
 
     sale_order_header_for_print = header;
@@ -5156,7 +5159,7 @@ window.addEventListener("pass_sale_header", async (event) => {
     // Auto-print the kitchen ORDER-### docket for this sell/invoice step. 'auto'
     // uses the invoice-stage source no when the order has been invoiced, else the
     // sale-order no. header.id is the sale order id.
-    if (header?.id && typeof printOrderDocket === "function") {
+    if (!skipDocket && header?.id && typeof printOrderDocket === "function") {
         await printOrderDocket("auto", header.id, posInfo);
     }
 

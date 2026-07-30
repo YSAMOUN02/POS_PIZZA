@@ -1545,6 +1545,14 @@ class Cart extends Component
         $this->customer_contact_phone = $saleOrder->phone ?? '';
         $this->document_type = $saleOrder->status;
 
+        // Resolve add-on recipe-line ids → names once, so a loaded order shows its
+        // variant + add-ons in the cart (and on the receipt) like a fresh line does.
+        $addonNameMap = collect($saleOrder->lines)
+            ->flatMap(fn($l) => (array) ($l->addon_line_ids ?? []))
+            ->filter()->unique()->values()
+            ->pipe(fn($ids) => $ids->isNotEmpty()
+                ? \App\Models\ProductRecipeLine::whereIn('id', $ids)->pluck('addon_name', 'id')
+                : collect());
 
         foreach ($saleOrder->lines as $line) {
             $product = $line->product;
@@ -1562,10 +1570,16 @@ class Cart extends Component
             $netPrice = $price - $discountAmount;
             $vatAmount = ($netPrice * $vat) / 100;
 
+            $addonIds = array_values(array_filter((array) ($line->addon_line_ids ?? [])));
+            $addonNames = collect($addonIds)
+                ->map(fn($id) => $addonNameMap[$id] ?? null)
+                ->filter()->values()->all();
+
             $this->cart[] = [
                 'id' => $line->product_id,
                 'code' => $product?->code ?? '',
                 'name' => $product?->name ?? $line->name,
+                'variant' => $line->variant ?? $product?->variant,
                 'type' => $product?->type ?? 'product',
 
                 'price' => $price,
@@ -1585,6 +1599,10 @@ class Cart extends Component
                 'stock' => $stock,
                 'unit' => $product?->unit ?? $line->unit ?? 'NA',
                 'track_stock' => $product?->track_stock ?? 0,
+
+                // Show add-ons on the loaded line + its receipt (names, not ids).
+                'attribute_label' => $addonNames ? implode(', ', $addonNames) : null,
+                'addon_ids' => $addonIds,
             ];
         }
 
@@ -2312,6 +2330,18 @@ class Cart extends Component
             } else {
                 $msg = 'បានបង់ប្រាក់គ្រប់ចំនួន : ' . $saleOrder->document_no;
             }
+
+            // Print a receipt for this payment (partial or final). skip_docket:
+            // the kitchen ticket already printed when the order was placed, so
+            // taking payment shouldn't re-send it to the kitchen.
+            $posInfo = PosProfile::where('user_report', $saleOrder->created_user_id)->first();
+            $posInfo = $posInfo ? $posInfo->toArray() : [];
+            $posInfo['logo_url'] = PosProfileController::logoUrl();
+            $this->dispatch('pass_sale_header', [
+                'header'      => $saleOrder->fresh(),
+                'posInfo'     => $posInfo,
+                'skip_docket' => true,
+            ]);
 
             $this->dispatch('deposit-success', [
                 'message' => $msg

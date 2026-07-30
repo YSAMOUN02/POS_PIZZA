@@ -247,6 +247,9 @@
     <script>
         let factor = @json($factor);
         let currency_name = @json($currency_name);
+        // Riel rate (USD → ៛) for the receipt's "Total (៛)" line. Independent of
+        // `factor` (which is 1 in USD mode) so the riel total is always correct.
+        window.POS_RIEL_RATE = @json($riel_rate ?? 0);
         const is_admin = @json(Auth::user()->role == 'admin');
         // Warehouse-to-warehouse "transfer" and same-warehouse bin-to-bin
         // "movement" share one modal/endpoint — show the "Transfer" trigger
@@ -350,6 +353,8 @@
                 const data = await res.json();
 
                 productsByCategory = data.categories;
+
+                if (data.riel_rate) window.POS_RIEL_RATE = Number(data.riel_rate);
 
                 const newFactor = Number(data.factor);
                 const rateChanged = newFactor !== Number(factor) || data.currency_name !== currency_name;
