@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@import "flowbite/src/themes/default";
+@plugin "flowbite/plugin";
+@source "../../node_modules/flowbite";
+
+@import "../../vendor/livewire/flux/dist/flux.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@import "../../vendor/livewire/flux/dist/flux.css";
+@theme {
+    --font-sans: Inter, sans-serif;
+}
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../../public/assets/js/*.js';
+
+@theme {
+    --font-sans:
+        "Instrument Sans", ui-sans-serif, system-ui, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
+}
+
+/* =====================================================
+   MODAL TEMPLATES — one shared look for every Sale modal,
+   one distinct-but-consistent look for every Purchase modal.
+   ===================================================== */
+@layer components {
+    /* NOTE: these intentionally do NOT include Tailwind's `hidden` utility.
+       Every modal in the markup carries a literal `hidden` class alongside
+       whichever of these it uses; JS shows/hides it via the normal
+       classList.remove("hidden") / classList.add("hidden") pattern used
+       throughout this app. Baking `hidden` into the @apply here would make
+       it permanent — since a plain classList.remove("hidden") call has no
+       literal "hidden" token left on the element to strip, the modal would
+       never be able to become visible again. `flex` is baked in instead,
+       so removing the literal `hidden` class is all a caller needs to do. */
+    /* ---- Sale template (cool slate/blue identity) ---- */
+    .modal-overlay-sale { @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4; }
+    .modal-overlay-sale-stacked { @apply fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4; }
+    .modal-overlay-sale-top { @apply fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4; }
+    .modal-card-sale { @apply w-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col; }
+    .modal-header-sale { @apply flex items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-5 shrink-0; }
+    .modal-icon-badge-sale { @apply h-11 w-11 rounded-2xl bg-white/10 flex items-center justify-center text-sky-300 shrink-0; }
+
+    /* ---- Purchase template (warm amber/orange identity) ---- */
+    .modal-overlay-purchase { @apply fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4; }
+    .modal-overlay-purchase-stacked { @apply fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4; }
+    .modal-card-purchase { @apply w-full bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col; }
+    .modal-header-purchase { @apply flex items-center justify-between gap-4 bg-gradient-to-r from-amber-900 via-orange-800 to-amber-900 px-6 py-5 shrink-0; }
+    .modal-icon-badge-purchase { @apply h-11 w-11 rounded-2xl bg-white/15 flex items-center justify-center text-amber-200 shrink-0; }
+
+    /* ---- Shared close button + shared small "confirm/alert" card (both sides) ---- */
+    .modal-close-btn { @apply flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-red-500 shrink-0; }
+    .modal-overlay-alert { @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4; }
+    .modal-card-alert { @apply w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6; }
+}

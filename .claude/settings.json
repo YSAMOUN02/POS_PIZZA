@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F: '$1>4860 && $1<4875')",
+      "Bash(awk 'NR>=4572 && NR<=4631' resources/views/backend/pos.blade.php)",
+      "Bash(cd \"c:\\\\Users\\\\itsupport1\\\\Desktop\\\\POS_CONFIREL\\\\POS_PIZZA\" && rm -f \"C:/Users/ITSUPP~1/AppData/Local/Temp/claude/c--Users-itsupport1-Desktop-POS-CONFIREL-POS-PIZZA/c11b63fb-9b0a-4aa1-80fc-293a33cd7f0b/scratchpad/\"*.php && echo \"cleaned\")",
+      "Bash(grep -n 'streamDownload\\\\|StreamedResponse\\\\|function export\\\\|->download\\\\|Xlsx\\\\|writer\\\\|save\\('\\\\''php\\\\|function.*[Ee]xport\\\\|input\\('\\\\''from'\\\\''\\\\|input\\('\\\\''to'\\\\''\\\\|query\\('\\\\''from'\\\\''\\\\|query\\('\\\\''to'\\\\''\\\\|->from\\\\b\\\\|$from\\\\s*=\\\\|$to\\\\s*=' app/Http/Controllers/GainCostController.php)",
+      "Bash(php -l app/Http/Controllers/GainCostController.php)",
+      "Bash(cd \"c:\\\\Users\\\\itsupport1\\\\Desktop\\\\POS_CONFIREL\\\\POS_PIZZA\" && rm -f \"C:/Users/ITSUPP~1/AppData/Local/Temp/claude/c--Users-itsupport1-Desktop-POS-CONFIREL-POS-PIZZA/c11b63fb-9b0a-4aa1-80fc-293a33cd7f0b/scratchpad/\"*.php && echo cleaned)",
+      "Bash(php -l app/Http/Controllers/ItemLedgerEntryController.php)",
+      "Bash(php -l app/Http/Controllers/SaleOrderController.php)",
+      "Bash(node --check public/assets/js/print_thermal_receipt.js)",
+      "Bash(node --check public/assets/js/print_document_a4.js)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\ITSUPP~1\\AppData\\Local\\Temp\\claude\\c--Users-itsupport1-Desktop-POS-CONFIREL-POS-PIZZA\\c11b63fb-9b0a-4aa1-80fc-293a33cd7f0b\\scratchpad"
+    ]
+  }
+}

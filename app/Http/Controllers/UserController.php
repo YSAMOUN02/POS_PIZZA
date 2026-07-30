@@ -1,0 +1,177 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Permission;
+use App\Models\User;
+use App\Models\UserWarehouse;
+use App\Models\Warehouse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+
+class UserController extends Controller
+{
+    public function userListData(Request $request)
+    {
+        $query = \App\Models\User::query();
+
+        // Search text
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Role filter
+        if ($request->filled('role') && $request->role !== 'All') {
+            $query->where('role', $request->role);
+        }
+
+        if ($request->active != 'All') {
+            $active = $request->active == '1' ? 1 : 0;
+            $query->where('status', $active);
+        }
+
+        $users = $query->orderBy('id', 'desc')->get();
+
+        return response()->json($users);
+    }
+    public function store_user(Request $request)
+    {
+        try {
+            $request->validate([
+                'display_name' => 'required|string|max:255',
+                'username' => 'required|string|max:255|unique:users,username',
+                'role' => 'required|string',
+                'email' => 'required|email|unique:users,email',
+                'warehouses' => 'nullable|array',
+                'warehouses.*' => 'exists:warehouses,id',
+                'permissions' => 'nullable|array',
+                'permissions.*' => 'exists:permissions,id',
+                'password' => 'required|string|min:4', // ✅ make required
+            ]);
+
+            $user = User::create([
+                'name' => $request->display_name,
+                'username' => $request->username,
+                'role' => $request->role,
+                'email' => $request->email,
+                'password' => Hash::make($request->password), // ✅ always valid now
+                'status' => 1,
+                'created_by'  => Auth::user()->name ?? 'System',
+            ]);
+
+            // ✅ Better way using relationship (recommended)
+            if ($request->filled('warehouses')) {
+                $user->warehouses()->sync($request->warehouses);
+            }
+
+            $this->syncPermissionsAndLog($user, $request->input('permissions', []));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User created successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function get_warehouse_list()
+    {
+        $warehouse =  Warehouse::select('id', 'name', 'location')
+            ->get();
+
+        return response()->json($warehouse);
+    }
+
+    public function show($id)
+    {
+        $user = User::with(['warehouses:id', 'permissions:id'])->find($id);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        return response()->json([
+            'id' => $user->id,
+            'display_name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'role' => $user->role,
+            'status' => $user->status,
+            'warehouses' => $user->warehouses->pluck('id'),
+            'permissions' => $user->permissions->pluck('id'),
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found',
+            ], 404);
+        }
+
+        $request->validate([
+            'display_name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users,username,' . $id,
+            'role' => 'required|string',
+            'email' => 'nullable|email|unique:users,email,' . $id,
+            'password' => 'nullable|string|min:4',
+            'warehouses' => 'nullable|array',
+            'warehouses.*' => 'exists:warehouses,id',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id',
+        ]);
+
+        try {
+            $data = [
+                'name' => $request->display_name,
+                'username' => $request->username,
+                'role' => $request->role,
+                'email' => $request->email,
+                'status' => $request->has('status') ? 1 : 0,
+            ];
+
+            if ($request->filled('password')) {
+                $data['password'] = Hash::make($request->password);
+            }
+
+            $user->update($data);
+
+            $user->warehouses()->sync($request->input('warehouses', []));
+
+            $this->syncPermissionsAndLog($user, $request->input('permissions', []));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User updated successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync a user's permission checkboxes.
+     */
+    private function syncPermissionsAndLog(User $user, array $permissionIds): void
+    {
+        $user->permissions()->sync($permissionIds);
+    }
+}
