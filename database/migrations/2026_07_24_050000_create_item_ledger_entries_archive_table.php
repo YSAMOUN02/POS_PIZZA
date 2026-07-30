@@ -18,9 +18,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('item_ledger_entries_archive')) {
-            DB::statement('CREATE TABLE item_ledger_entries_archive LIKE item_ledger_entries');
+        if (Schema::hasTable('item_ledger_entries_archive')) {
+            return;
         }
+
+        if (DB::getDriverName() === 'mysql') {
+            // Exact structural copy (columns + indexes), no rows.
+            DB::statement('CREATE TABLE item_ledger_entries_archive LIKE item_ledger_entries');
+            return;
+        }
+
+        // SQL Server has no "CREATE TABLE ... LIKE". SELECT ... INTO with a false
+        // predicate copies the column definitions (types + nullability) with zero
+        // rows. Indexes/keys aren't copied, which is fine — this is cold storage
+        // that nothing reads in daily operation.
+        DB::statement('SELECT * INTO item_ledger_entries_archive FROM item_ledger_entries WHERE 1 = 0');
     }
 
     public function down(): void
