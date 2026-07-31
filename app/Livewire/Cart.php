@@ -204,7 +204,7 @@ class Cart extends Component
             throw new \Exception('No lines to ship for ' . $saleOrder->document_no);
         }
 
-        $riel = Currency::where('code', '៛')->firstOrFail();
+        $riel = $this->getRielCurrency();
         $warehouse_ids = Auth::user()->warehouses->pluck('id');
 
         $invoice = InvoiceHeader::create([
@@ -743,9 +743,20 @@ class Cart extends Component
     }
 
 
-    private function getRielCurrency()
+    private function getRielCurrency(): Currency
     {
-        return Currency::where('code', '៛')->firstOrFail();
+        // Drives the receipt's "Total (៛)" line and the #riel_factor hidden input the
+        // cart renders on every POS load. On a fresh / misconfigured database the
+        // Riel row may not exist yet — return an unsaved zero-rate row instead of
+        // firstOrFail(), which throws ModelNotFoundException and renders as a 404 the
+        // moment the Sale screen loads (before the user can even add a currency).
+        $riel = Currency::where('code', '៛')->first();
+        if (! $riel) {
+            $riel = new Currency();
+            $riel->code = '៛';
+            $riel->factor = 0;
+        }
+        return $riel;
     }
 
     public function clearTable()
@@ -1777,7 +1788,7 @@ class Cart extends Component
         try {
 
             DB::transaction(function () use ($payload, &$saleOrderNo, $precision, $r, $snapUnit) {
-                $riel = Currency::where('code', '៛')->firstOrFail();
+                $riel = $this->getRielCurrency();
 
                 
                 $totalAmount = 0;

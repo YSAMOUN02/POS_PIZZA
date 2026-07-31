@@ -171,7 +171,16 @@ class PurchaseCart extends Component
     }
     private function getRielCurrency()
     {
-        return Currency::where('code', '៛')->firstOrFail();
+        // Never firstOrFail() — a missing Riel row would throw ModelNotFoundException
+        // (renders as a 404). Fall back to an unsaved zero-rate row on a fresh /
+        // misconfigured database so the purchasing screen still loads and posts.
+        $riel = Currency::where('code', '៛')->first();
+        if (! $riel) {
+            $riel = new Currency();
+            $riel->code = '៛';
+            $riel->factor = 0;
+        }
+        return $riel;
     }
     public function post_grn()
     {
