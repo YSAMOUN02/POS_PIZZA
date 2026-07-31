@@ -64,6 +64,13 @@ class ImageController extends Controller
      */
     public static function generate(string $source, string $thumb, int $maxWidth): bool
     {
+        // No GD / WebP support on this PHP (common on some hosts)? Don't fatally
+        // crash with "call to undefined function" — return false so the caller
+        // serves the original image instead. Thumbnails just won't be generated.
+        if (!function_exists('imagewebp') || !function_exists('imagecreatetruecolor')) {
+            return false;
+        }
+
         $info = @getimagesize($source);
         if (!$info) {
             return false;

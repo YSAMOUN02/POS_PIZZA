@@ -1543,6 +1543,12 @@ class ProductController extends Controller
         $thumb = $dir . '/' . md5($srcPath . filemtime($srcPath) . $maxPx) . '.jpg';
         if (is_file($thumb)) return $thumb;
 
+        // No GD on this PHP? Skip the Excel image thumbnail rather than fatally
+        // crashing the whole export with "call to undefined function".
+        if (!function_exists('imagecreatetruecolor') || !function_exists('imagejpeg')) {
+            return null;
+        }
+
         $info = @getimagesize($srcPath);
         if (!$info) return null;
 
