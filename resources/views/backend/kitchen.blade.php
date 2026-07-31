@@ -872,7 +872,7 @@
                      while customers can still order it). --}}
                 <div id="recipeLockBanner" class="hidden shrink-0 items-center gap-2 px-6 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
                     <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>This variant is <b>live on the menu</b> — edits you make here apply to what customers order. Change what you need and click <b>Save</b>.</span>
+                    <span>This variant is <b>locked</b>. To edit its recipe, add-ons or routing, set the status to <b>Under development</b> above first.</span>
                 </div>
 
                 {{-- Internal tabs — Components (always consumed) vs Add-ons (optional extras) --}}
@@ -1081,15 +1081,22 @@
 
         /* Frosted pill track on the amber bar — same as the Sale screen's .tab-track
            (style.css isn't loaded on this standalone page, so the recipe is inlined). */
-        .tab-track { background: rgba(255, 255, 255, .25); border-radius: 10px; scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .2) transparent; scroll-behavior: smooth; }
+        .tab-track { background: rgba(255, 255, 255, .32); border: 1px solid rgba(255, 255, 255, .5); border-radius: 13px; box-shadow: inset 0 1px 2px rgba(120, 53, 15, .06); scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, .2) transparent; scroll-behavior: smooth; }
         .tab-track::-webkit-scrollbar { height: 3px; }
         .tab-track::-webkit-scrollbar-track { background: transparent; }
         .tab-track::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, .15); border-radius: 2px; }
 
-        /* ---- Top-bar pills (same recipe as the Sale screen's .tab-pill) ---- */
-        .kitchen-tab-btn { white-space: nowrap; padding: .45rem 1rem; border-radius: 7px; font-size: .8rem; font-weight: 600; color: #78350f; background: transparent; border: 1px solid transparent; transition: background .15s ease, color .15s ease; cursor: pointer; display: inline-flex; align-items: center; }
-        .kitchen-tab-btn:hover { background: rgba(255, 255, 255, .55); color: #111827; }
-        .kitchen-tab-btn.active { color: #111827; background: #ffffff; border-color: rgba(0, 0, 0, .06); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+        /* ---- Top-bar pills (segmented control on the amber bar) ----
+           Refined per Emil Kowalski's design-engineering principles (animations.dev):
+           press feedback via scale(0.97), a strong custom ease-out curve, specific
+           (never "all") transition props, and hover gated to fine pointers so a
+           tapped tab on the kitchen touchscreen doesn't stick in :hover. */
+        .kitchen-tab-btn { white-space: nowrap; padding: .55rem 1.2rem; border-radius: 9px; font-size: .82rem; font-weight: 600; letter-spacing: .01em; color: #7c2d12; background: transparent; border: 1px solid transparent; transition: background .18s cubic-bezier(.23, 1, .32, 1), color .18s ease, box-shadow .18s cubic-bezier(.23, 1, .32, 1), transform .1s ease-out; cursor: pointer; display: inline-flex; align-items: center; }
+        @media (hover: hover) and (pointer: fine) {
+            .kitchen-tab-btn:hover { background: rgba(255, 255, 255, .5); color: #431407; }
+        }
+        .kitchen-tab-btn:active { transform: scale(.97); }
+        .kitchen-tab-btn.active { color: #0f172a; background: #ffffff; border-color: rgba(0, 0, 0, .05); box-shadow: 0 2px 8px rgba(120, 53, 15, .22), 0 1px 2px rgba(0, 0, 0, .06); }
         .kitchen-tab-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.125rem; height: 1.125rem; padding: 0 .3rem; border-radius: 9999px; background: #d97706; color: #fff; font-size: .6875rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
         /* ---- White chip actions on the amber bar (Purchase / Sale / Logout) ---- */

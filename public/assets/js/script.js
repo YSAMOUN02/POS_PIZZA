@@ -2364,6 +2364,19 @@ async function openEditProductModal() {
     const row = document.querySelector(`tr[data-id="${selected.value}"]`);
     if (!row) return;
     const d = row.dataset;
+
+    // Menu dishes (cooking products) can only be edited while "Under development".
+    // Active/Disabled are locked (mirrors the server guard) — set it to Under
+    // development in the Kitchen interface first. Other product types edit freely.
+    if (d.type === "cooking_product" && String(d.status) !== "3") {
+        showToast({
+            message: "This menu item is " + (String(d.status) === "1" ? "Active" : "Disabled") +
+                ". Set it to 'Under development' (Kitchen) before editing.",
+            type: "warning",
+        });
+        return;
+    }
+
     const form = document.getElementById("AddProductForm");
     if (!form) return;
 

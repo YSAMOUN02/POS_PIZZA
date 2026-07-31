@@ -1791,10 +1791,12 @@ function applyVariantStatus(statusInt) {
     const sel = document.getElementById("recipeStatusSelect");
     if (sel) sel.value = String(_recipeVariantStatus);
 
-    // Only an Enabled (live) variant is read-only — edit it by switching to
-    // Disable or Under development first.
-    setRecipeEditable(_recipeVariantStatus !== 1);
-    // Keep the status select itself usable even when the recipe is locked.
+    // Editing (recipe / add-ons / routing) is allowed ONLY while the variant is
+    // Under development (3). Active (1) and Disabled (2) are both locked — switch
+    // to Under development first. Mirrors the server guard in saveRecipe/update.
+    setRecipeEditable(_recipeVariantStatus === 3);
+    // Keep the status select itself usable even when the recipe is locked (it's how
+    // the chef unlocks — by switching to Under development).
     if (sel) sel.disabled = false;
 }
 
@@ -1802,20 +1804,20 @@ function applyVariantStatus(statusInt) {
 // live (variant pills, tab switches, the Disable/Enable toggle, Cancel/Close) so
 // the chef can still view everything read-only.
 function setRecipeEditable(editable) {
-    // Advisory, not a hard lock. A live (Enabled) variant stays fully editable —
-    // the chef edits and clicks Save once. We only show a banner reminding them the
-    // changes go live. (This used to disable every field, which turned editing a
-    // live recipe into a disable → Save → enable chore; the original ask was a
-    // heads-up, not a lock.) Make sure nothing is left disabled from older logic.
+    // HARD lock: a variant can only be edited while it is Under development. When
+    // it isn't, every editable control in the recipe modal (cost/price fields,
+    // components, add-ons, routing steps, Save, Rename) is disabled and a banner
+    // explains how to unlock. Only the status select stays live (see below) so the
+    // chef can switch the variant to Under development to edit it.
     ["recipeChefCost", "recipeSellPrice", "recipeRoutingCost", "recipeRenameBtn", "btnSaveRecipe"].forEach((id) => {
         const el = document.getElementById(id);
-        if (el) { el.disabled = false; el.style.pointerEvents = ""; }
+        if (el) { el.disabled = !editable; el.style.pointerEvents = editable ? "" : "none"; }
     });
     ["recipeModalTab-components", "recipeModalTab-addons", "recipeModalTab-routine"].forEach((id) => {
         const panel = document.getElementById(id);
         if (panel) panel.querySelectorAll("input, select, textarea, button").forEach((el) => {
-            el.disabled = false;
-            el.style.pointerEvents = "";
+            el.disabled = !editable;
+            el.style.pointerEvents = editable ? "" : "none";
         });
     });
 
@@ -1825,8 +1827,8 @@ function setRecipeEditable(editable) {
         banner.classList.toggle("flex", !editable);
     }
 
-    // Routing field still follows its steps-driven read-only rule, regardless of status.
-    recalcRoutingCost();
+    // Routing field still follows its steps-driven read-only rule when editable.
+    if (editable) recalcRoutingCost();
 }
 
 // A live (Enabled) variant is no longer hard-locked — it's fully editable and saved

@@ -425,6 +425,18 @@ class ProductController extends Controller
         // 1️⃣ Find the product
         $product = Product::findOrFail($id);
 
+        // Menu dishes (cooking products) can only be edited while "Under development"
+        // (status 3). Active (1) or Disabled (2) are locked — switch the variant to
+        // Under development first, edit, then publish. Other product types (regular
+        // products, raw/packaging materials, services) are unaffected.
+        if ($product->type === 'cooking_product' && (int) $product->status !== 3) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This menu item is ' . ((int) $product->status === 1 ? 'Active' : 'Disabled')
+                    . ". Set it to 'Under development' before editing.",
+            ], 422);
+        }
+
         // 2️⃣ Validate required fields
         $request->validate([
             'code' => 'required|string',
@@ -1047,6 +1059,17 @@ class ProductController extends Controller
             return response()->json([
                 'status'  => false,
                 'message' => 'Recipes can only be set on Cooking Product items.',
+            ], 422);
+        }
+
+        // Editing the recipe (components / add-ons / routing) is only allowed while
+        // the variant is "Under development" (status 3). Active (1) or Disabled (2)
+        // are locked — switch it to Under development first, edit, then publish.
+        if ((int) $product->status !== 3) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'This variant is ' . ((int) $product->status === 1 ? 'Active' : 'Disabled')
+                    . ". Set it to 'Under development' before editing its recipe, add-ons or routing.",
             ], 422);
         }
 
