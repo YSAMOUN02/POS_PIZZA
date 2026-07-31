@@ -1659,12 +1659,31 @@ function recalcRoutingCost() {
     recalcRecipeTotals();
 }
 
+// Edit the current dish's menu info (name, photo, price, details) without leaving
+// the recipe — reuses the full product form. Fetches the complete product first so
+// no field gets blanked on save. (Save still requires the variant to be Under
+// development — the server enforces it.)
+async function editMenuInfoFromRecipe() {
+    const id = document.getElementById("recipeProductId").value;
+    if (!id) return;
+    try {
+        const dishes = await apiFetch("/kitchen/cooking-products");
+        const p = (Array.isArray(dishes) ? dishes : []).find((d) => String(d.id) === String(id));
+        if (!p) { showToast({ message: "Couldn't load this item's info.", type: "error" }); return; }
+        openKitchenProductModal(p);
+    } catch (e) {
+        showToast({ message: "Couldn't load menu info. Try again.", type: "error" });
+    }
+}
+
 async function openRecipeModal(productId, name, variant) {
     document.getElementById("recipeProductId").value = productId;
     document.getElementById("recipeProductLabel").textContent =
         `${name || ""}${variant ? " · " + variant : ""}`;
     _recipeDishName = name || "";
     _recipeCurrentVariant = variant || "";
+    const _dishImgBox = document.getElementById("recipeDishImg");
+    if (_dishImgBox) _dishImgBox.innerHTML = '<i class="fa-solid fa-clipboard-list"></i>';
     switchRecipeModalTab("components");
 
     _recipeRowIndex = 0;
@@ -1702,6 +1721,11 @@ async function openRecipeModal(productId, name, variant) {
 
         _rawMaterialsCache = rawMaterials;
         _recipeDishName = recipeData.name ?? name ?? "";
+        if (_dishImgBox) {
+            _dishImgBox.innerHTML = recipeData.image
+                ? `<img src="/thumb?f=${encodeURIComponent(recipeData.image)}&s=300" alt="" class="h-full w-full object-cover">`
+                : '<i class="fa-solid fa-clipboard-list"></i>';
+        }
 
         (recipeData.components || []).forEach((line) =>
             addRecipeRow("component", line),
@@ -1804,7 +1828,7 @@ function setRecipeEditable(editable) {
     // components, add-ons, routing steps, Save, Rename) is disabled and a banner
     // explains how to unlock. Only the status select stays live (see below) so the
     // chef can switch the variant to Under development to edit it.
-    ["recipeChefCost", "recipeSellPrice", "recipeRoutingCost", "recipeRenameBtn", "btnSaveRecipe"].forEach((id) => {
+    ["recipeChefCost", "recipeSellPrice", "recipeRoutingCost", "recipeRenameBtn", "recipeEditInfoBtn", "btnSaveRecipe"].forEach((id) => {
         const el = document.getElementById(id);
         if (el) { el.disabled = !editable; el.style.pointerEvents = editable ? "" : "none"; }
     });

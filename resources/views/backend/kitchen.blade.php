@@ -813,18 +813,27 @@
         <div class="relative w-full max-w-4xl lg:w-220">
             <div class="kitchen-modal-card recipe-modal-card flex flex-col">
                 <div class="kitchen-modal-header shrink-0">
-                    <div class="flex items-center gap-3">
-                        <span class="h-8 w-8 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 text-xs"><i class="fa-solid fa-clipboard-list"></i></span>
-                        <div>
+                    <div class="flex items-center gap-3 min-w-0">
+                        {{-- Dish photo (same image the cashier sees). Falls back to an icon. --}}
+                        <div id="recipeDishImg" class="h-11 w-11 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center text-gray-400 shrink-0">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                        </div>
+                        <div class="min-w-0">
                             <h3 class="text-[15px] font-semibold text-gray-900 leading-tight">Manage Recipe</h3>
-                            <div class="flex items-center gap-1.5">
-                                <p id="recipeProductLabel" class="text-xs text-gray-500">&nbsp;</p>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <p id="recipeProductLabel" class="text-xs text-gray-500 truncate">&nbsp;</p>
                                 {{-- Rename just the variant label (e.g. "M" → "Medium"); the dish name
                                      and its grouping stay the same. --}}
                                 <button type="button" id="recipeRenameBtn" onclick="renameVariant()"
                                     title="Rename this variant"
                                     class="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-600 hover:text-sky-600 hover:border-sky-300 font-semibold">
                                     <i class="fa-solid fa-pen"></i> Rename
+                                </button>
+                                {{-- Edit the menu item's info + photo — reuses the full product form. --}}
+                                <button type="button" id="recipeEditInfoBtn" onclick="editMenuInfoFromRecipe()"
+                                    title="Edit this menu item's name, photo, price & details"
+                                    class="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-md border border-gray-300 bg-white text-gray-600 hover:text-amber-600 hover:border-amber-300 font-semibold">
+                                    <i class="fa-solid fa-sliders"></i> Edit info
                                 </button>
                             </div>
                         </div>

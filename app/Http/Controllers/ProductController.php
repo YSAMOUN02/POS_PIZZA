@@ -833,6 +833,7 @@ class ProductController extends Controller
             'name'       => $product->name,
             'variant'    => $product->variant,
             'type'       => $product->type,
+            'image'      => $product->image,   // dish photo, shown in the Manage Recipe header
             'sell_price' => $product->sell_price,
             'chef_cost'  => $product->cost,                       // manual, authoritative
             'routing_cost' => $routingCost,                       // labour/prep, per unit, per variant
