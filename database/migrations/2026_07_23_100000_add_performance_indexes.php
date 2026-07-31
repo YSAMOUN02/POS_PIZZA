@@ -107,10 +107,14 @@ return new class extends Migration
 
     private function indexExists(string $table, string $name): bool
     {
-        return DB::table('information_schema.STATISTICS')
-            ->where('TABLE_SCHEMA', DB::getDatabaseName())
-            ->where('TABLE_NAME', $table)
-            ->where('INDEX_NAME', $name)
-            ->exists();
+        // Schema::getIndexes() is driver-agnostic (works on MySQL, SQL Server, …).
+        // The old information_schema.STATISTICS query was MySQL-only — that view
+        // doesn't exist on SQL Server.
+        foreach (Schema::getIndexes($table) as $index) {
+            if (strcasecmp($index['name'] ?? '', $name) === 0) {
+                return true;
+            }
+        }
+        return false;
     }
 };
