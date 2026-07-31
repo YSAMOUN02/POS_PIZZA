@@ -1139,9 +1139,30 @@
         .recipe-modal-tab-panel.hidden { display: none; }
 
         /* ---- Kitchen order ticket ---- */
-        .kitchen-ticket { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid #f59e0b; border-radius: .75rem; padding: .875rem 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); display: flex; flex-direction: column; gap: .5rem; transition: border-color .15s ease; }
-        .kitchen-ticket:hover { border-color: #d1d5db; }
-        .kitchen-ticket-qty { font-size: 1.125rem; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+        /* ---- Order tickets (Pending / Prepared) — professional card, designed with
+           the apple-design + emil-design-eng skills: clear hierarchy, a status accent
+           rail, consistent heights (meta+action pinned to the bottom), soft depth,
+           scale(0.97) press feedback, and hover gated to fine pointers (touchscreen). */
+        .kitchen-ticket { position: relative; background: #fff; border: 1px solid #eceef1; border-radius: 14px; padding: .9rem 1rem 1rem 1.1rem; box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .05); display: flex; flex-direction: column; gap: .6rem; cursor: pointer; transition: box-shadow .2s cubic-bezier(.23, 1, .32, 1), transform .2s cubic-bezier(.23, 1, .32, 1), border-color .2s ease; }
+        .kitchen-ticket::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; background: #f59e0b; }
+        .kitchen-ticket.is-out::before { background: #f43f5e; }
+        .kitchen-ticket.is-done::before { background: #10b981; }
+        @media (hover: hover) and (pointer: fine) { .kitchen-ticket:hover { box-shadow: 0 8px 20px rgba(16, 24, 40, .10), 0 2px 5px rgba(16, 24, 40, .06); transform: translateY(-2px); border-color: #e2e8f0; } }
+        .kitchen-ticket:active { transform: translateY(0) scale(.985); }
+        .kitchen-ticket.is-selected { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, .4), 0 8px 20px rgba(16, 24, 40, .10); }
+        .kitchen-ticket.is-done.is-selected { border-color: #10b981; box-shadow: 0 0 0 2px rgba(16, 185, 129, .4), 0 8px 20px rgba(16, 24, 40, .10); }
+        .kitchen-ticket-title { font-weight: 700; font-size: .95rem; line-height: 1.2; letter-spacing: -.01em; color: #0f172a; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .kitchen-ticket-variant { margin-top: .3rem; display: inline-flex; align-items: center; font-size: .6875rem; font-weight: 600; padding: .12rem .5rem; border-radius: 999px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; }
+        .kitchen-ticket.is-done .kitchen-ticket-variant { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+        .kitchen-ticket-qty { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 2.15rem; height: 2.15rem; padding: 0 .5rem; border-radius: 11px; background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+        .kitchen-ticket.is-done .kitchen-ticket-qty { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+        .kitchen-ticket-meta { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .6875rem; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: .6rem; }
+        .kitchen-ticket-meta i { color: #cbd5e1; margin-right: .25rem; }
+        .kitchen-ticket-btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; padding: .55rem .75rem; border-radius: 10px; border: 1px solid transparent; font-size: .75rem; font-weight: 700; cursor: pointer; transition: background .16s ease, box-shadow .16s ease, transform .1s ease-out; }
+        .kitchen-ticket-btn:active { transform: scale(.97); }
+        .kitchen-ticket-btn.is-consume { background: #f59e0b; color: #451a03; box-shadow: 0 1px 2px rgba(180, 83, 9, .25); }
+        .kitchen-ticket-btn.is-outstock { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+        @media (hover: hover) and (pointer: fine) { .kitchen-ticket-btn.is-consume:hover { background: #f97316; } .kitchen-ticket-btn.is-outstock:hover { background: #ffe4e6; } }
 
         /* ---- Stat cards: label + number on a plain white card ---- */
         .kitchen-stat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: .75rem; padding: .875rem 1rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); display: flex; align-items: center; gap: .75rem; }

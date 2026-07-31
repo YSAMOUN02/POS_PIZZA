@@ -268,32 +268,27 @@ function renderPendingOrders(rows) {
         return;
     }
     container.innerHTML = rows
-        .map(
-            (r) => `
-        <div class="kitchen-ticket cursor-pointer ${_selectedOrder?.id === r.id && !_selectedOrder?._prepared ? "ring-2 ring-amber-400" : ""}" onclick="selectOrderForDetails(${r.id}, false)">
+        .map((r) => {
+            const out = r.can_prepare === false;
+            const selected = _selectedOrder?.id === r.id && !_selectedOrder?._prepared;
+            return `
+        <div class="kitchen-ticket ${out ? "is-out" : ""} ${selected ? "is-selected" : ""}" onclick="selectOrderForDetails(${r.id}, false)">
             <div class="flex items-start justify-between gap-3">
-                <div>
-                    <p class="font-bold text-gray-800 leading-tight">${r.name ?? ""}</p>
-                    ${r.variant ? `<span class="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">${r.variant}</span>` : ""}
+                <div class="min-w-0">
+                    <p class="kitchen-ticket-title">${r.name ?? ""}</p>
+                    ${r.variant ? `<span class="kitchen-ticket-variant">${r.variant}</span>` : ""}
                 </div>
                 <span class="kitchen-ticket-qty">×${parseFloat(r.quantity)}</span>
             </div>
-            <div class="flex items-center justify-between text-xs text-gray-500 border-t border-dashed border-gray-200 pt-2.5">
-                <span><i class="fa-solid fa-receipt mr-1 text-gray-400"></i>${r.invoice_no ?? r.document_no ?? "-"}</span>
-                <span><i class="fa-regular fa-clock mr-1 text-gray-400"></i>${timeAgo(r.sold_at)}</span>
+            <div class="kitchen-ticket-meta">
+                <span class="truncate"><i class="fa-solid fa-receipt"></i>${r.invoice_no ?? r.document_no ?? "-"}</span>
+                <span class="shrink-0"><i class="fa-regular fa-clock"></i>${timeAgo(r.sold_at)}</span>
             </div>
-            ${
-                r.can_prepare === false
-                    ? `<button onclick="event.stopPropagation(); markPrepared(${r.id})" class="w-full mt-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-200 text-xs font-bold transition" title="A raw material is out of stock">
-                        <i class="fa-solid fa-triangle-exclamation"></i> Out of Stock
-                    </button>`
-                    : `<button onclick="event.stopPropagation(); markPrepared(${r.id})" class="w-full mt-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs font-bold transition">
-                        <i class="fa-solid fa-check"></i> Consume
-                    </button>`
-            }
-        </div>
-    `,
-        )
+            <button onclick="event.stopPropagation(); markPrepared(${r.id})" class="kitchen-ticket-btn ${out ? "is-outstock" : "is-consume"}"${out ? ' title="A raw material is out of stock"' : ""}>
+                <i class="fa-solid ${out ? "fa-triangle-exclamation" : "fa-check"}"></i> ${out ? "Out of Stock" : "Consume"}
+            </button>
+        </div>`;
+        })
         .join("");
 }
 
@@ -379,23 +374,23 @@ function renderPreparedToday(rows) {
         return;
     }
     container.innerHTML = rows
-        .map(
-            (r) => `
-        <div class="kitchen-ticket cursor-pointer opacity-90 ${_selectedOrder?.id === r.id && _selectedOrder?._prepared ? "ring-2 ring-emerald-400" : ""}" style="border-left-color:#10b981" onclick="selectOrderForDetails(${r.id}, true)">
+        .map((r) => {
+            const selected = _selectedOrder?.id === r.id && _selectedOrder?._prepared;
+            return `
+        <div class="kitchen-ticket is-done ${selected ? "is-selected" : ""}" onclick="selectOrderForDetails(${r.id}, true)">
             <div class="flex items-start justify-between gap-3">
-                <div>
-                    <p class="font-bold text-gray-800 leading-tight">${r.name ?? ""}</p>
-                    ${r.variant ? `<span class="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">${r.variant}</span>` : ""}
+                <div class="min-w-0">
+                    <p class="kitchen-ticket-title">${r.name ?? ""}</p>
+                    ${r.variant ? `<span class="kitchen-ticket-variant">${r.variant}</span>` : ""}
                 </div>
                 <span class="kitchen-ticket-qty">×${parseFloat(r.quantity)}</span>
             </div>
-            <div class="flex items-center justify-between text-xs text-gray-500 border-t border-dashed border-gray-200 pt-2.5">
-                <span><i class="fa-solid fa-receipt mr-1 text-gray-400"></i>${r.invoice_no ?? r.document_no ?? "-"}</span>
-                <span class="text-emerald-600"><i class="fa-solid fa-check mr-1"></i>${timeAgo(r.prepared_at)}</span>
+            <div class="kitchen-ticket-meta">
+                <span class="truncate"><i class="fa-solid fa-receipt"></i>${r.invoice_no ?? r.document_no ?? "-"}</span>
+                <span class="shrink-0" style="color:#059669"><i class="fa-solid fa-check" style="color:#10b981;margin-right:.25rem"></i>${timeAgo(r.prepared_at)}</span>
             </div>
-        </div>
-    `,
-        )
+        </div>`;
+        })
         .join("");
 }
 
