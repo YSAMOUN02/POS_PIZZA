@@ -107,9 +107,31 @@ return new class extends Migration
 
     private function indexExists(string $table, string $name): bool
     {
-        // Schema::getIndexes() is driver-agnostic (works on MySQL, SQL Server, …).
-        // The old information_schema.STATISTICS query was MySQL-only — that view
-        // doesn't exist on SQL Server.
+        $driver = DB::getDriverName();
+
+        // Query system catalogs directly per driver. We deliberately AVOID
+        // Schema::getIndexes(), because Laravel 12's SQL Server implementation of it
+        // uses STRING_AGG(...) WITHIN GROUP, which fails on databases whose
+        // compatibility level is below 140 (pre-2017 semantics).
+        if ($driver === 'sqlsrv') {
+            return DB::selectOne(
+                'SELECT 1 AS found
+                   FROM sys.indexes i
+                   INNER JOIN sys.tables t ON t.object_id = i.object_id
+                  WHERE t.name = ? AND i.name = ?',
+                [$table, $name]
+            ) !== null;
+        }
+
+        if ($driver === 'mysql') {
+            return DB::table('information_schema.STATISTICS')
+                ->where('TABLE_SCHEMA', DB::getDatabaseName())
+                ->where('TABLE_NAME', $table)
+                ->where('INDEX_NAME', $name)
+                ->exists();
+        }
+
+        // Other drivers (sqlite, pgsql): Laravel's introspection is fine there.
         foreach (Schema::getIndexes($table) as $index) {
             if (strcasecmp($index['name'] ?? '', $name) === 0) {
                 return true;
