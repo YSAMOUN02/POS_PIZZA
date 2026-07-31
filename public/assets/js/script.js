@@ -6369,6 +6369,20 @@ async function fetchSaleOrderForPrint(id) {
     return res.json();
 }
 
+// Router for the sale-order "More actions" dropdown — Invoice / Delivery Note /
+// Picking List / Sale Return were moved off the button row into a <select>.
+// Resets the select after firing so the same option can be picked again.
+function runSaleOrderMoreAction(sel) {
+    const v = sel.value;
+    sel.value = "";
+    switch (v) {
+        case "invoice":  printSelectedSaleOrderInvoice(); break;
+        case "delivery": printSelectedSaleOrderDeliveryNote(); break;
+        case "picking":  printSelectedSaleOrderPickingList(); break;
+        case "return":   SaleReturn(); break;
+    }
+}
+
 async function printSelectedSaleOrderInvoice() {
     if (!selectedSaleOrderId) {
         showToast({ message: "Please select a sale order first", type: "error" });

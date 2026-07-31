@@ -4816,63 +4816,7 @@
                                     group-hover:opacity-100 transition duration-300"></span>
                         </button>
 
-                        <!-- Sale Return Button -->
-                        <button onclick="SaleReturn()"
-                            class="group relative overflow-hidden px-5 py-2.5 rounded-xl
-                                bg-gradient-to-r from-rose-500 to-red-600
-                                hover:from-rose-600 hover:to-red-700
-                                text-white font-semibold shadow-md hover:shadow-xl
-                                transition-all duration-300 active:scale-95
-                                {{ Auth::user()->hasPermission('pos_sale.sell') ? '' : 'hidden' }}">
-
-                            <span class="relative flex items-center gap-2">
-                                <i class="fa-solid fa-arrow-rotate-left text-sm"></i>
-                                Sale Return
-                            </span>
-
-                            <!-- glow -->
-                            <span
-                                class="absolute inset-0 bg-white/10 opacity-0
-                                    group-hover:opacity-100 transition duration-300"></span>
-                        </button>
-
-                        <!-- Print Invoice Button -->
-                        <button onclick="printSelectedSaleOrderInvoice()"
-                            class="group relative overflow-hidden px-5 py-2.5 rounded-xl
-                                bg-gradient-to-r from-slate-700 to-slate-900
-                                hover:from-slate-800 hover:to-black
-                                text-white font-semibold shadow-md hover:shadow-xl
-                                transition-all duration-300 active:scale-95">
-
-                            <span class="relative flex items-center gap-2">
-                                <i class="fa-solid fa-file-invoice text-sm"></i>
-                                Print Invoice
-                            </span>
-
-                            <!-- glow -->
-                            <span
-                                class="absolute inset-0 bg-white/10 opacity-0
-                                    group-hover:opacity-100 transition duration-300"></span>
-                        </button>
-
-                        <!-- Print Delivery Note Button -->
-                        <button onclick="printSelectedSaleOrderDeliveryNote()"
-                            class="group relative overflow-hidden px-5 py-2.5 rounded-xl
-                                bg-gradient-to-r from-teal-600 to-emerald-700
-                                hover:from-teal-700 hover:to-emerald-800
-                                text-white font-semibold shadow-md hover:shadow-xl
-                                transition-all duration-300 active:scale-95">
-
-                            <span class="relative flex items-center gap-2">
-                                <i class="fa-solid fa-truck-fast text-sm"></i>
-                                Print Delivery Note
-                            </span>
-
-                            <!-- glow -->
-                            <span
-                                class="absolute inset-0 bg-white/10 opacity-0
-                                    group-hover:opacity-100 transition duration-300"></span>
-                        </button>
+                        {{-- Sale Return, Print Invoice & Delivery Note moved into the "More actions" dropdown --}}
 
                         <!-- Print Receipt Button -->
                         <button onclick="printSelectedSaleOrderReceipt()"
@@ -4893,24 +4837,19 @@
                                     group-hover:opacity-100 transition duration-300"></span>
                         </button>
 
-                        <!-- Picking List -->
-                        <button onclick="printSelectedSaleOrderPickingList()"
-                            class="group relative overflow-hidden px-5 py-2.5 rounded-xl
-                                bg-gradient-to-r from-indigo-600 to-violet-700
-                                hover:from-indigo-700 hover:to-violet-800
-                                text-white font-semibold shadow-md hover:shadow-xl
-                                transition-all duration-300 active:scale-95">
-
-                            <span class="relative flex items-center gap-2">
-                                <i class="fa-solid fa-boxes-packing text-sm"></i>
-                                Picking List
-                            </span>
-
-                            <!-- glow -->
-                            <span
-                                class="absolute inset-0 bg-white/10 opacity-0
-                                    group-hover:opacity-100 transition duration-300"></span>
-                        </button>
+                        <!-- More actions (Invoice / Delivery Note / Picking List / Sale Return) -->
+                        <select id="saleOrderMoreActions" onchange="runSaleOrderMoreAction(this)"
+                            class="px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-semibold
+                                text-gray-700 shadow-md hover:border-gray-400 focus:border-sky-500
+                                focus:ring-2 focus:ring-sky-100 transition cursor-pointer">
+                            <option value="">More actions…</option>
+                            <option value="invoice">Print Invoice</option>
+                            <option value="delivery">Print Delivery Note</option>
+                            <option value="picking">Picking List</option>
+                            @if (Auth::user()->hasPermission('pos_sale.sell'))
+                                <option value="return">Sale Return</option>
+                            @endif
+                        </select>
 
                     </div>
 
