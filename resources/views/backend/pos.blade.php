@@ -4409,6 +4409,9 @@
                             <option value="Transfer Shipment">Transfer Shipment</option>
                             <option value="Purchase">Purchase</option>
                             <option value="Adjustment">Adjustment</option>
+                            <option value="Recipe Consumption">Recipe Consumption</option>
+                            <option value="Add-on Consumption">Add-on Consumption</option>
+                            <option value="Kitchen Production">Kitchen Production</option>
                         </select>
 
                         <!-- CLEAR -->

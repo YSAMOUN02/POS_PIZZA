@@ -782,17 +782,19 @@ class KitchenController extends Controller
 
             foreach ($needs as $n) {
 
+                $isAddon = ($n['source_no'] === 'Add-on');
                 $result = $this->deductRawMaterial(
                     $n['rm']->id,
                     $n['needed'],
                     $warehouseIds,
                     $line,
-                    $fgItemCode
+                    $fgItemCode,
+                    $isAddon
                 );
 
                 $totalMaterialCost += $result['cost'];
 
-                $lineType = ($n['source_no'] === 'Addon') ? 'add_on' : 'component';
+                $lineType = $isAddon ? 'add_on' : 'component';
                 foreach ($result['lots'] as $lot) {
                     $koLines[] = $lot + ['line_type' => $lineType];
                 }
@@ -926,7 +928,8 @@ class KitchenController extends Controller
         float $needed,
         $warehouseIds,
         InvoiceLine $line,
-        string $ledgerSourceNo = ''
+        string $ledgerSourceNo = '',
+        bool $isAddon = false
     ): array {
         $rawMaterial = Product::find($rawMaterialId);
         if (!$rawMaterial) {
@@ -966,7 +969,8 @@ class KitchenController extends Controller
                 $lot->bin_id,
                 $lot->lot,
                 $line,
-                $ledgerSourceNo
+                $ledgerSourceNo,
+                $isAddon
             );
 
             // Re-cap the purchase entries' remaining_quantity to the new on-hand for
@@ -1205,7 +1209,7 @@ class KitchenController extends Controller
             ->orderByDesc('qty_sold')
             ->get();
 
-        $rawMaterialUsage = ItemLedgerEntry::where('document_type', 'Recipe Consumption')
+        $rawMaterialUsage = ItemLedgerEntry::whereIn('document_type', ['Recipe Consumption', 'Add-on Consumption'])
             ->where('entry_type', 'negative')
             ->where('type', 'raw_material')
             ->whereDate('posting_date', $date)
@@ -1216,7 +1220,7 @@ class KitchenController extends Controller
             ->orderByDesc('qty_used')
             ->get();
 
-        $packagingUsage = ItemLedgerEntry::where('document_type', 'Recipe Consumption')
+        $packagingUsage = ItemLedgerEntry::whereIn('document_type', ['Recipe Consumption', 'Add-on Consumption'])
             ->where('entry_type', 'negative')
             ->where('type', 'packaging_material')
             ->whereDate('posting_date', $date)
@@ -1249,7 +1253,7 @@ class KitchenController extends Controller
         $from = $request->query('from', now()->startOfMonth()->toDateString());
         $to = $request->query('to', now()->toDateString());
 
-        $usage = ItemLedgerEntry::where('document_type', 'Recipe Consumption')
+        $usage = ItemLedgerEntry::whereIn('document_type', ['Recipe Consumption', 'Add-on Consumption'])
             ->where('entry_type', 'negative')
             ->where('type', 'raw_material')
             ->whereBetween('posting_date', [$from, $to])
@@ -1288,7 +1292,8 @@ class KitchenController extends Controller
         $binId,
         $lot,
         InvoiceLine $line,
-        string $sourceNo = 'Component'
+        string $sourceNo = 'Component',
+        bool $isAddon = false
     ): void {
         $warehouse = Warehouse::find($warehouseId);
         // $cost is the specific LOT's cost this portion was drawn from (FIFO),
@@ -1296,7 +1301,9 @@ class KitchenController extends Controller
 
         $ledger = ItemLedgerEntry::create([
             'posting_date'       => now()->toDateString(),
-            'document_type'      => 'Recipe Consumption',
+            // Add-on materials post as their own process type so the ledger/report
+            // can separate "extras the customer chose" from the base recipe.
+            'document_type'      => $isAddon ? 'Add-on Consumption' : 'Recipe Consumption',
             'document_no'        => $line->document_no,
             'source_id'          => $line->id,
             'source_no' => $sourceNo,
