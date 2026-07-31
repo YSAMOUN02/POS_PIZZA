@@ -306,8 +306,9 @@
                 </div>
                 <div class="shrink-0 kitchen-card p-3 mb-4 flex flex-wrap items-center gap-2.5">
                     <div class="relative flex-1 min-w-50">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input type="text" id="menuFilterSearch" placeholder="Search menu items..." class="kitchen-input w-full pl-9">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                        {{-- pl via inline style: .kitchen-input's `padding` shorthand overrides Tailwind's pl-9 --}}
+                        <input type="text" id="menuFilterSearch" placeholder="Search menu items..." class="kitchen-input w-full" style="padding-left:2.2rem;">
                     </div>
                     <select id="menuFilterCategory" class="kitchen-input">
                         <option value="">All Categories</option>
