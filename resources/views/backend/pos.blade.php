@@ -2921,23 +2921,11 @@
                                 class="px-5 py-2.5 rounded-2xl bg-amber-500 text-white font-semibold hover:bg-amber-600 shadow-sm transition">
                                 Edit
                             </button>
-                            <button type="button" id="btnManageRecipe"
-                                class="px-5 py-2.5 rounded-2xl bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow-sm transition">
-                                Recipe
-                            </button>
+                            {{-- Recipe (BOM) is managed only in the Chef/Kitchen interface. --}}
+                            {{-- Attributes removed — variants + add-ons are used instead. --}}
                         @endif
 
-                        @if (Auth::user()->hasPermission('product.create'))
-                            <button type="button" id="btnManageAttributes"
-                                data-modal-target="default-modal-attributes"
-                                data-modal-toggle="default-modal-attributes"
-                                class="px-5 py-2.5 rounded-2xl bg-slate-600 text-white font-semibold hover:bg-slate-700 shadow-sm transition">
-                                Attributes
-                            </button>
-                        @endif
-
-                        <button type="button" id="btnAddProduct" data-modal-target="default-modal-add-product"
-                            data-modal-toggle="default-modal-add-product"
+                        <button type="button" id="btnAddProduct"
                             class="px-5 py-2.5 rounded-2xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-sm transition {{ Auth::user()->hasPermission('product.create') ? '' : 'hidden' }}">
                             + New
                         </button>
@@ -2972,16 +2960,18 @@
         <div class="relative w-full max-w-6xl my-8">
             <form id="AddProductForm" enctype="multipart/form-data" class="modal-card-sale">
                 @csrf
+                {{-- Empty = add mode; set to a product id = edit mode (same form reused). --}}
+                <input type="hidden" name="edit_id" id="editProductId" value="">
 
                 {{-- Header --}}
                 <div class="modal-header-sale">
                     <div>
-                        <h3 class="text-xl font-bold text-white">Add Product</h3>
+                        <h3 id="addProductTitle" class="text-xl font-bold text-white">Add Product</h3>
                         <p class="text-sm text-slate-300">Create product, service, expense, raw material, or cooking
                             product</p>
                     </div>
 
-                    <button type="button" data-modal-hide="default-modal-add-product" class="modal-close-btn">
+                    <button type="button" onclick="closeAddProductModal()" class="modal-close-btn">
                         ✕
                     </button>
                 </div>
@@ -3162,12 +3152,12 @@
 
                 {{-- Footer --}}
                 <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
-                    <button type="button" data-modal-hide="default-modal-add-product"
+                    <button type="button" onclick="closeAddProductModal()"
                         class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100">
                         Cancel
                     </button>
 
-                    <button type="submit"
+                    <button type="submit" id="addProductSubmitBtn"
                         class="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow">
                         Save Product
                     </button>
@@ -3347,43 +3337,7 @@
     </div>
 
     {{-- MANAGE ATTRIBUTES (Size / Color / Topping definitions) --}}
-    <div id="default-modal-attributes" tabindex="-1" aria-hidden="true" data-modal-backdrop="static"
-        class="modal-overlay-sale items-start md:items-center overflow-y-auto hidden">
-        <div class="relative w-full max-w-2xl my-8">
-            <div class="modal-card-sale">
-                <div class="modal-header-sale">
-                    <div>
-                        <h3 class="text-xl font-bold text-white">Manage Attributes</h3>
-                        <p class="text-sm text-slate-300">Define variant options like Size, Color, Topping</p>
-                    </div>
-                    <button type="button" data-modal-hide="default-modal-attributes"
-                        class="modal-close-btn">✕</button>
-                </div>
-
-                <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-                    <form id="newAttributeForm" class="flex gap-2">
-                        <input type="text" id="newAttributeName" placeholder="New attribute name (e.g. Size)"
-                            required class="flex-1 rounded-xl border-gray-300 px-4 py-2.5">
-                        <button type="submit"
-                            class="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700">
-                            + Add
-                        </button>
-                    </form>
-
-                    <div id="attributesList" class="space-y-4">
-                        {{-- rendered by JS --}}
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 px-6 py-4 bg-gray-50 border-t">
-                    <button type="button" data-modal-hide="default-modal-attributes"
-                        class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-100">
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- Manage Attributes removed — the POS uses product variants + add-ons instead. --}}
 
     {{-- MANAGE RECIPE (attribute tags + raw-material BOM for a cooking product) --}}
     <div id="default-modal-recipe" tabindex="-1" aria-hidden="true" data-modal-backdrop="static"

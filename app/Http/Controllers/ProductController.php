@@ -471,7 +471,9 @@ class ProductController extends Controller
             UPDATE PRODUCT
             ========================== */
           $product->update([
-    'bar_code'         => $request->barcode ?? '',
+    // Accept the shared Add-Product form's field names (bar_code / discount_percent);
+    // keep the old update-form names (barcode / discount) as a fallback.
+    'bar_code'         => $request->input('bar_code', $request->input('barcode', '')),
     'code'             => $request->code,
     'name'             => $request->name,
     'variant'          => $request->variant ?? '',
@@ -481,7 +483,7 @@ class ProductController extends Controller
     'cost'             => $request->cost ?? 0,
     'sell_price'       => $request->sell_price ?? 0,
     'vat'              => $request->vat ?? 0,
-    'discount_percent' => $request->discount ?? 0,
+    'discount_percent' => $request->input('discount_percent', $request->input('discount', 0)),
     'category_id'      => $request->category_id ?? null,
     'category_name'    => $request->category_name ?? '',
     'unit'             => $request->unit ?? '',

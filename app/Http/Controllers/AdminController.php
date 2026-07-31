@@ -34,8 +34,11 @@ class AdminController extends Controller
         } else {
             $sql->whereIn('type', ['Product', 'Service']);
         }
-        // Raw/packaging materials are chef stock, not sellable menu items — never list them on the Sale screen.
-        $sql->whereNotIn('type', ['raw_material', 'packaging_material']);
+        // Raw/packaging materials are chef stock, not sellable menu items — hide them
+        // from the Sale screen for everyone EXCEPT admin (admin can see/handle all types).
+        if (Auth::user()->role !== 'admin') {
+            $sql->whereNotIn('type', ['raw_material', 'packaging_material']);
+        }
         $sql->where('status', 1);
         // A cooking product with no recipe components has no recipe to produce/cost
         // it, so it can't really be sold — hide those empty dishes from the cashier.
@@ -154,8 +157,11 @@ class AdminController extends Controller
         } else {
             $sql->where('type', 'Product');
         }
-        // Raw/packaging materials are chef stock, not sellable menu items — never list them on the Sale screen.
-        $sql->whereNotIn('type', ['raw_material', 'packaging_material']);
+        // Raw/packaging materials are chef stock, not sellable menu items — hide them
+        // from the Sale screen for everyone EXCEPT admin (admin can see/handle all types).
+        if (Auth::user()->role !== 'admin') {
+            $sql->whereNotIn('type', ['raw_material', 'packaging_material']);
+        }
         $sql->where('status', 1);
         // A cooking product with no recipe components has no recipe to produce/cost
         // it, so it can't really be sold — hide those empty dishes from the cashier.

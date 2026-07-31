@@ -2304,33 +2304,139 @@ function renderPagination(result) {
     }
 }
 
+// ---- Shared Add/Edit Product modal (one form for both) --------------------
+function openAddProductModal() {
+    document.getElementById("default-modal-add-product")?.classList.remove("hidden");
+}
+function closeAddProductModal() {
+    document.getElementById("default-modal-add-product")?.classList.add("hidden");
+    resetProductFormToAddMode();
+}
+
+// Put the shared form back into "add" state (clears edit id + fields, restores
+// title/button text, re-enables the type select).
+function resetProductFormToAddMode() {
+    const form = document.getElementById("AddProductForm");
+    if (!form) return;
+    form.reset();
+    const editId = document.getElementById("editProductId");
+    if (editId) editId.value = "";
+    const title = document.getElementById("addProductTitle");
+    if (title) title.textContent = "Add Product";
+    const btn = document.getElementById("addProductSubmitBtn");
+    if (btn) { btn.textContent = "Save Product"; btn.disabled = false; }
+    const typeSel = document.getElementById("type");
+    if (typeSel) { typeSel.disabled = false; typeSel.title = ""; typeSel.dispatchEvent(new Event("change")); }
+    const prev = document.getElementById("imagePreview");
+    if (prev) prev.innerHTML = "";
+    const disc = form.querySelector('[name="discount_percent"]');
+    if (disc) disc.disabled = false;
+    const track = document.getElementById("trackStockCheckbox");
+    if (track) { track.disabled = false; if (track.closest("label")) track.closest("label").title = ""; }
+}
+
+async function loadCategoriesIntoAddForm(selectedId = "") {
+    const select = document.getElementById("categorySelect");
+    if (!select) return;
+    select.innerHTML = `<option value="">Loading categories...</option>`;
+    try {
+        const res = await fetch("/categories");
+        const categories = await res.json();
+        select.innerHTML = `<option value="">-- Select Category --</option>`;
+        categories.forEach((cat) => {
+            const opt = document.createElement("option");
+            opt.value = cat.id;
+            opt.textContent = cat.name;
+            if (String(cat.id) === String(selectedId)) opt.selected = true;
+            select.appendChild(opt);
+        });
+    } catch (error) {
+        console.error(error);
+        select.innerHTML = `<option value="">Failed to load categories</option>`;
+    }
+}
+
+// Reuse the SAME Add-Product form for editing: populate it from the selected
+// table row and flip it into edit mode (see submit handler for the PUT).
+async function openEditProductModal() {
+    const selected = document.querySelector('input[name="product_id"]:checked');
+    if (!selected) { showToast({ message: "Please select a product first", type: "warning" }); return; }
+    const row = document.querySelector(`tr[data-id="${selected.value}"]`);
+    if (!row) return;
+    const d = row.dataset;
+    const form = document.getElementById("AddProductForm");
+    if (!form) return;
+
+    document.getElementById("editProductId").value = selected.value;
+    const title = document.getElementById("addProductTitle");
+    if (title) title.textContent = "Update Product";
+    const btn = document.getElementById("addProductSubmitBtn");
+    if (btn) btn.textContent = "Update Product";
+
+    const setVal = (name, val) => { const el = form.querySelector(`[name="${name}"]`); if (el) el.value = val ?? ""; };
+    const isOn = (v) => v === "true" || v === "1" || v === 1 || v === true;
+
+    setVal("code", d.code);
+    setVal("bar_code", d.bar_code);
+    setVal("name", d.name);
+    setVal("variant", d.variant);
+    setVal("description", d.description);
+    setVal("min_stock", d.min_stock ?? 0);
+    setVal("max_stock", d.max_stock ?? 0);
+    setVal("sell_price", d.sell_price ?? 0);
+    setVal("cost", d.cost ?? 0);
+    setVal("vat", d.vat ?? 0);
+    setVal("discount_percent", d.discount_percent ?? 0);
+    setVal("category_name", d.category_name);
+    setVal("unit", d.unit);
+
+    // Product type is fixed after creation (recipe/stock/base-unit depend on it):
+    // show it but keep it read-only.
+    const typeSel = document.getElementById("type");
+    if (typeSel) {
+        typeSel.value = d.type || "product";
+        typeSel.disabled = true;
+        typeSel.title = "Product type can't be changed after creation.";
+        typeSel.dispatchEvent(new Event("change"));
+    }
+
+    const setChk = (name, on) => { const el = form.querySelector(`[name="${name}"]`); if (el) el.checked = on; };
+    setChk("status", String(d.status) === "1");
+    setChk("allow_discount", isOn(d.allow_discount));
+    setChk("allow_return", isOn(d.allow_return));
+
+    const track = document.getElementById("trackStockCheckbox");
+    if (track) {
+        track.checked = isOn(d.track_stock);
+        const currentStock = parseFloat(d.stock) || 0;
+        track.disabled = currentStock !== 0;
+        if (track.closest("label")) track.closest("label").title = currentStock !== 0
+            ? `Cannot change: this product has ${currentStock} in stock. Adjust stock to zero first.` : "";
+    }
+
+    const discEl = form.querySelector('[name="discount_percent"]');
+    if (discEl) discEl.disabled = !isOn(d.allow_discount);
+
+    const prev = document.getElementById("imagePreview");
+    if (prev) {
+        prev.innerHTML = d.image
+            ? `<img src="/thumb?f=${encodeURIComponent(d.image)}&s=300" alt="Current image" class="mt-2 w-32 h-32 object-cover rounded" />`
+            : "";
+    }
+
+    await loadCategoriesIntoAddForm(d.category_id || "");
+    openAddProductModal();
+}
+
 // Get Category on Click New
-document
-    .getElementById("btnAddProduct")
-    .addEventListener("click", async function () {
-        const select = document.getElementById("categorySelect");
-
-        // Reset
-        select.innerHTML = `<option value="">Loading categories...</option>`;
-
-        try {
-            const response = await fetch("/categories");
-            const categories = await response.json();
-
-            select.innerHTML = `<option value="">-- Select Category --</option>`;
-
-            categories.forEach((cat) => {
-                select.innerHTML += `
-                <option value="${cat.id}">
-                    ${cat.name}
-                </option>
-            `;
-            });
-        } catch (error) {
-            console.error(error);
-            select.innerHTML = `<option value="">Failed to load categories</option>`;
-        }
+const _btnAddProduct = document.getElementById("btnAddProduct");
+if (_btnAddProduct) {
+    _btnAddProduct.addEventListener("click", async function () {
+        resetProductFormToAddMode();
+        await loadCategoriesIntoAddForm();
+        openAddProductModal();
     });
+}
 document
     .getElementById("productImage")
     .addEventListener("change", function (e) {
@@ -2412,15 +2518,30 @@ document.addEventListener("DOMContentLoaded", () => {
     typeSelect?.addEventListener("change", syncCookingProductHint);
     syncCookingProductHint();
 
-    // Async form submit
+    // Async form submit — one handler for both ADD (POST /products/store) and
+    // EDIT (PUT /product/{id}) depending on the hidden #editProductId.
     form.addEventListener("submit", async function (e) {
         e.preventDefault();
 
+        const editId = document.getElementById("editProductId")?.value || "";
         submitBtn.disabled = true;
-        submitBtn.innerText = "Saving...";
+        submitBtn.innerText = editId ? "Updating..." : "Saving...";
 
         try {
-            const response = await fetch("/products/store", {
+            const fd = new FormData(form);
+            let url = "/products/store";
+            if (editId) {
+                url = `/product/${editId}`;
+                fd.append("_method", "PUT"); // Laravel method spoofing over POST
+                // The Add form posts checkboxes as "on"/omitted; the update
+                // endpoint wants explicit 1/0 for the toggles.
+                ["status", "allow_discount", "allow_return", "track_stock"].forEach((k) => {
+                    const cb = form.querySelector(`[name="${k}"]`);
+                    fd.set(k, cb && cb.checked ? 1 : 0);
+                });
+            }
+
+            const response = await fetch(url, {
                 method: "POST",
                 headers: {
                     Accept: "application/json",
@@ -2428,7 +2549,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         'input[name="_token"]',
                     ).value,
                 },
-                body: new FormData(form),
+                body: fd,
             });
 
             let data;
@@ -2448,16 +2569,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // ✅ SUCCESS
             showToast({
-                message: data.message || "Product added successfully",
+                message:
+                    data.message ||
+                    (editId ? "Product updated successfully" : "Product added successfully"),
                 type: "success",
             });
             loadProducts(1);
-            form.reset();
-            imagePreviewContainer.innerHTML = "";
-
-            document
-                .querySelector('[data-modal-hide="default-modal-add-product"]')
-                ?.click();
+            closeAddProductModal(); // also resets the form back to add mode
         } catch (err) {
             // Always show toast
             showToast({
@@ -2466,7 +2584,8 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         } finally {
             submitBtn.disabled = false;
-            submitBtn.innerText = "Save Product";
+            submitBtn.innerText =
+                document.getElementById("editProductId")?.value ? "Update Product" : "Save Product";
         }
     });
 });
@@ -3649,10 +3768,12 @@ function openEditableMenuPreview(content) {
         });
     }
 
-    // Hook Edit button (doesn't exist when the current user lacks product.edit)
+    // Hook Edit button (doesn't exist when the current user lacks product.edit).
+    // Edit now reuses the Add-Product form (see openEditProductModal); the old
+    // openUpdateProductModal + #confirm-update-product modal are left dormant.
     if (document.getElementById("btnEditProduct")) {
         document.getElementById("btnEditProduct").addEventListener("click", () => {
-            openUpdateProductModal();
+            openEditProductModal();
         });
     }
 
