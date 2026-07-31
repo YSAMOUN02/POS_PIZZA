@@ -12,6 +12,17 @@ use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Chart\Chart;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
+use PhpOffice\PhpSpreadsheet\Chart\Legend;
+use PhpOffice\PhpSpreadsheet\Chart\PlotArea;
+use PhpOffice\PhpSpreadsheet\Chart\Title as ChartTitle;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class KitchenController extends Controller
 {
@@ -116,41 +127,184 @@ class KitchenController extends Controller
         ]);
     }
 
+    // Chef report as a styled .xlsx: a Summary sheet (KPIs + finished-goods table +
+    // materials-consumed table + a "Top Materials by Cost" bar chart) and a Detail
+    // sheet (one OUTPUT row per dish followed by its consumption lines).
     public function kitchenOrdersExport(Request $request)
     {
         $from = $request->query('from') ?: now()->startOfMonth()->toDateString();
         $to   = $request->query('to') ?: now()->toDateString();
 
+        // ---- Data (same aggregates as the Kitchen Order tab) ----
+        $materials = DB::table('kitchen_order_lines as l')
+            ->join('kitchen_order as o', 'o.id', '=', 'l.kitchen_order_id')
+            ->whereBetween('o.posting_date', [$from, $to])
+            ->groupBy('l.raw_material_id', 'l.name', 'l.unit')
+            ->selectRaw('l.name, l.unit, SUM(l.qty) as qty, SUM(l.cost_amount) as cost, COUNT(*) as uses')
+            ->orderByDesc('cost')
+            ->get();
+
+        $fg = \App\Models\KitchenOrder::whereBetween('posting_date', [$from, $to])
+            ->groupBy('product_id', 'name', 'variant')
+            ->selectRaw('name, variant, SUM(qty) as qty, SUM(material_cost) as material_cost, SUM(routing_cost) as routing_cost, SUM(fg_cost) as fg_cost')
+            ->orderByDesc('qty')
+            ->get();
+
         $orders = \App\Models\KitchenOrder::with('lines')
             ->whereBetween('posting_date', [$from, $to])
-            ->orderBy('id');
+            ->orderBy('id')->get();
 
-        $filename = "kitchen_orders_{$from}_to_{$to}.csv";
+        $money = '#,##0.00';
+        $qtyFmt = '#,##0.####';
+        $amber = 'F59E0B'; $amberLt = 'FEF3C7'; $slate = '1E293B'; $slateLt = 'F1F5F9';
 
-        return response()->streamDownload(function () use ($orders) {
-            $out = fopen('php://output', 'w');
-            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
-            fputcsv($out, [
-                'Date', 'Invoice', 'FG Code', 'Dish', 'Variant', 'Row', 'Item',
-                'Qty', 'Unit', 'Unit Cost', 'Cost Amount',
-                'Material Cost', 'Routing Cost', 'FG Cost', 'Sell Price', 'Warehouse', 'Prepared By',
-            ]);
-            foreach ($orders->cursor() as $o) {
-                fputcsv($out, [
+        $ss = new Spreadsheet();
+
+        /* ================= SUMMARY SHEET ================= */
+        $s = $ss->getActiveSheet();
+        $s->setTitle('Summary');
+        $s->getSheetView()->setShowGridlines(false);
+
+        $s->setCellValue('A1', 'Kitchen Production Report');
+        $s->mergeCells('A1:F1');
+        $s->getStyle('A1')->getFont()->setBold(true)->setSize(18)->getColor()->setRGB($slate);
+        $s->getRowDimension(1)->setRowHeight(26);
+        $s->setCellValue('A2', "Period:  {$from}   \u{2192}   {$to}");
+        $s->mergeCells('A2:F2');
+        $s->getStyle('A2')->getFont()->setSize(11)->getColor()->setRGB('64748B');
+
+        // KPI cards (row 4 label / row 5 value)
+        $kpis = [
+            ['Dishes Made',    (float) $fg->sum('qty'),          $qtyFmt],
+            ['Materials Used', $materials->count(),              '#,##0'],
+            ['Material Cost',  (float) $materials->sum('cost'),  $money],
+            ['Routing Cost',   (float) $fg->sum('routing_cost'), $money],
+            ['FG Cost',        (float) $fg->sum('fg_cost'),      $money],
+        ];
+        $col = 'A';
+        foreach ($kpis as [$label, $val, $fmt]) {
+            $s->setCellValue("{$col}4", $label);
+            $s->getStyle("{$col}4")->getFont()->setBold(true)->setSize(9)->getColor()->setRGB('92400E');
+            $s->setCellValue("{$col}5", $val);
+            $s->getStyle("{$col}5")->getNumberFormat()->setFormatCode($fmt);
+            $s->getStyle("{$col}5")->getFont()->setBold(true)->setSize(14)->getColor()->setRGB($slate);
+            $s->getStyle("{$col}4:{$col}5")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($amberLt);
+            $s->getStyle("{$col}4:{$col}5")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $col++;
+        }
+
+        // Finished-goods table
+        $r = 7;
+        $s->setCellValue("A{$r}", 'FINISHED GOODS PRODUCED');
+        $s->mergeCells("A{$r}:F{$r}");
+        $s->getStyle("A{$r}")->getFont()->setBold(true)->setSize(11)->getColor()->setRGB($slate);
+        $fgHead = ++$r;
+        foreach (['Dish', 'Variant', 'Qty', 'Material Cost', 'Routing Cost', 'FG Cost'] as $i => $h) {
+            $s->setCellValue(chr(65 + $i) . $fgHead, $h);
+        }
+        $s->getStyle("A{$fgHead}:F{$fgHead}")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $s->getStyle("A{$fgHead}:F{$fgHead}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($slate);
+        $r++;
+        foreach ($fg as $row) {
+            $s->setCellValue("A{$r}", $row->name);
+            $s->setCellValue("B{$r}", $row->variant);
+            $s->setCellValue("C{$r}", (float) $row->qty);
+            $s->setCellValue("D{$r}", (float) $row->material_cost);
+            $s->setCellValue("E{$r}", (float) $row->routing_cost);
+            $s->setCellValue("F{$r}", (float) $row->fg_cost);
+            $s->getStyle("C{$r}")->getNumberFormat()->setFormatCode($qtyFmt);
+            $s->getStyle("D{$r}:F{$r}")->getNumberFormat()->setFormatCode($money);
+            $r++;
+        }
+        if ($fg->isEmpty()) { $s->setCellValue("A{$r}", 'No dishes prepared in this period.'); $r++; }
+
+        // Materials-consumed table
+        $r += 1;
+        $s->setCellValue("A{$r}", 'MATERIALS CONSUMED');
+        $s->mergeCells("A{$r}:E{$r}");
+        $s->getStyle("A{$r}")->getFont()->setBold(true)->setSize(11)->getColor()->setRGB($slate);
+        $matHead = ++$r;
+        foreach (['Material', 'Unit', 'Qty', 'Cost', 'Uses'] as $i => $h) {
+            $s->setCellValue(chr(65 + $i) . $matHead, $h);
+        }
+        $s->getStyle("A{$matHead}:E{$matHead}")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $s->getStyle("A{$matHead}:E{$matHead}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($amber);
+        $matStart = $matHead + 1;
+        $rr = $matStart;
+        foreach ($materials as $m) {
+            $s->setCellValue("A{$rr}", $m->name);
+            $s->setCellValue("B{$rr}", $m->unit);
+            $s->setCellValue("C{$rr}", (float) $m->qty);
+            $s->setCellValue("D{$rr}", (float) $m->cost);
+            $s->setCellValue("E{$rr}", (int) $m->uses);
+            $s->getStyle("C{$rr}")->getNumberFormat()->setFormatCode($qtyFmt);
+            $s->getStyle("D{$rr}")->getNumberFormat()->setFormatCode($money);
+            $rr++;
+        }
+        $matEnd = $rr - 1;
+        if ($materials->isEmpty()) { $s->setCellValue("A{$matStart}", 'No materials consumed in this period.'); }
+
+        foreach (range('A', 'F') as $c) { $s->getColumnDimension($c)->setAutoSize(true); }
+
+        // Chart — top materials by cost (already sorted desc; cap for readability)
+        if ($materials->count() >= 1) {
+            $chartEnd = min($matEnd, $matStart + 14);
+            $cnt = $chartEnd - $matStart + 1;
+            $labels = [new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, "Summary!\$D\${$matHead}", null, 1)];
+            $cats   = [new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, "Summary!\$A\${$matStart}:\$A\${$chartEnd}", null, $cnt)];
+            $vals   = [new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, "Summary!\$D\${$matStart}:\$D\${$chartEnd}", null, $cnt)];
+            $vals[0]->setFillColor($amber);
+            $series = new DataSeries(DataSeries::TYPE_BARCHART, DataSeries::GROUPING_STANDARD, range(0, count($vals) - 1), $labels, $cats, $vals);
+            $series->setPlotDirection(DataSeries::DIRECTION_BAR);
+            $plot = new PlotArea(null, [$series]);
+            $chart = new Chart('materialsByCost', new ChartTitle('Top Materials by Cost'), new Legend(Legend::POSITION_RIGHT, null, false), $plot);
+            $chart->setTopLeftPosition('H4');
+            $chart->setBottomRightPosition('P24');
+            $s->addChart($chart);
+        }
+
+        /* ================= DETAIL SHEET ================= */
+        $d = $ss->createSheet();
+        $d->setTitle('Detail');
+        $headers = ['Date', 'Invoice', 'FG Code', 'Dish', 'Variant', 'Row', 'Item', 'Qty', 'Unit', 'Unit Cost', 'Cost Amount', 'Material Cost', 'Routing Cost', 'FG Cost', 'Sell Price', 'Warehouse', 'Prepared By'];
+        $d->fromArray($headers, null, 'A1');
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $d->getStyle("A1:{$lastCol}1")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $d->getStyle("A1:{$lastCol}1")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($slate);
+        $dr = 2;
+        foreach ($orders as $o) {
+            $d->fromArray([
+                $o->posting_date, $o->document_no, $o->item_code, $o->name, $o->variant,
+                'OUTPUT', $o->name, (float) $o->qty, $o->unit, null, null,
+                (float) $o->material_cost, (float) $o->routing_cost, (float) $o->fg_cost, (float) $o->sell_price, $o->warehouse_name, $o->prepared_by,
+            ], null, "A{$dr}");
+            $d->getStyle("A{$dr}:{$lastCol}{$dr}")->getFont()->setBold(true);
+            $d->getStyle("A{$dr}:{$lastCol}{$dr}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB($slateLt);
+            $dr++;
+            foreach ($o->lines as $l) {
+                $d->fromArray([
                     $o->posting_date, $o->document_no, $o->item_code, $o->name, $o->variant,
-                    'OUTPUT', $o->name, $o->qty, $o->unit, '', '',
-                    $o->material_cost, $o->routing_cost, $o->fg_cost, $o->sell_price, $o->warehouse_name, $o->prepared_by,
-                ]);
-                foreach ($o->lines as $l) {
-                    fputcsv($out, [
-                        $o->posting_date, $o->document_no, $o->item_code, $o->name, $o->variant,
-                        strtoupper($l->line_type), $l->name, $l->qty, $l->unit, $l->unit_cost, $l->cost_amount,
-                        '', '', '', '', '', '',
-                    ]);
-                }
+                    strtoupper($l->line_type), $l->name, (float) $l->qty, $l->unit, (float) $l->unit_cost, (float) $l->cost_amount,
+                    null, null, null, null, null, null,
+                ], null, "A{$dr}");
+                $dr++;
             }
-            fclose($out);
-        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }
+        foreach (range('A', $lastCol) as $c) { $d->getColumnDimension($c)->setAutoSize(true); }
+        $d->freezePane('A2');
+
+        $ss->setActiveSheetIndex(0);
+
+        $writer = new Xlsx($ss);
+        $writer->setIncludeCharts(true);
+        $filename = "chef_report_{$from}_to_{$to}.xlsx";
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 
     // Chef-side purchasing: raw / packaging materials ONLY. The chef enters the
