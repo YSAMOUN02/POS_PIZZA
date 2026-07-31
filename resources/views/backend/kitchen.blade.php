@@ -293,31 +293,28 @@
         {{-- ===================== RECIPE & ATTRIBUTES ===================== --}}
         <section id="kitchen-tab-recipe" class="kitchen-tab-panel">
             <div class="kitchen-scroll">
-                <div class="flex items-center justify-between mb-3 gap-3 flex-wrap">
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Menu Items</h3>
-                        <p class="text-xs text-gray-400">Click a dish to manage its components &amp; add-ons</p>
+                {{-- One compact toolbar: title + filters + action on a single row (the
+                     filters used to sit on their own row, wasting vertical space). --}}
+                <div class="flex flex-wrap items-center gap-2.5 mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">Menu Items</h3>
+                    <div class="relative flex-1" style="min-width:11rem">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
+                        {{-- pl via inline style: .kitchen-input's `padding` shorthand overrides Tailwind's pl-9 --}}
+                        <input type="text" id="menuFilterSearch" placeholder="Search menu items..." class="kitchen-input w-full" style="padding-left:2.2rem;">
                     </div>
+                    <select id="menuFilterCategory" class="kitchen-input shrink-0">
+                        <option value="">All Categories</option>
+                    </select>
+                    <select id="menuFilterRecipe" class="kitchen-input shrink-0">
+                        <option value="">Any Recipe Status</option>
+                        <option value="set">Recipe Set</option>
+                        <option value="none">No Recipe</option>
+                    </select>
                     @if (Auth::user()->hasPermission('kitchen.product') || Auth::user()->hasPermission('kitchen.recipe'))
                         <button type="button" onclick="openKitchenProductModal(null, 'cooking_product')" class="kitchen-btn-dark shrink-0">
                             <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add Menu</span>
                         </button>
                     @endif
-                </div>
-                <div class="shrink-0 kitchen-card p-3 mb-4 flex flex-wrap items-center gap-2.5">
-                    <div class="relative flex-1 min-w-50">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none"></i>
-                        {{-- pl via inline style: .kitchen-input's `padding` shorthand overrides Tailwind's pl-9 --}}
-                        <input type="text" id="menuFilterSearch" placeholder="Search menu items..." class="kitchen-input w-full" style="padding-left:2.2rem;">
-                    </div>
-                    <select id="menuFilterCategory" class="kitchen-input">
-                        <option value="">All Categories</option>
-                    </select>
-                    <select id="menuFilterRecipe" class="kitchen-input">
-                        <option value="">Any Recipe Status</option>
-                        <option value="set">Recipe Set</option>
-                        <option value="none">No Recipe</option>
-                    </select>
                 </div>
                 <div class="kitchen-card p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3 content-start" id="cookingProductPicker">
                     <p class="text-sm text-gray-400 p-3 col-span-full">Loading...</p>
