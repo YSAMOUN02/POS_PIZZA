@@ -1038,7 +1038,7 @@ function renderProductTable(data) {
             <td class="px-4 py-3 align-top">
                 <div class="flex items-start gap-3 min-w-[220px] max-w-[320px]">
                     <img
-                        src="/thumb?f=${encodeURIComponent(p.image)}&s=96"
+                        src="/thumb?f=${encodeURIComponent(p.image)}&s=300"
                         alt=""
                         loading="lazy" decoding="async"
                         onerror="this.onerror=null;this.src='/assets/defult/placeholder.png';"
@@ -3854,7 +3854,7 @@ function openEditableMenuPreview(content) {
         }
 
         document.getElementById("preview_img").src =
-            `/thumb?f=${encodeURIComponent(row.dataset.image)}&s=600`;
+            `/thumb?f=${encodeURIComponent(row.dataset.image)}&s=300`;
 
         const sellPrice = parseFloat(row.dataset.sell_price) || 0; // Selling price
         const vat = parseFloat(row.dataset.vat) || 0; // VAT %

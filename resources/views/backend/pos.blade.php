@@ -765,7 +765,7 @@
 
         function renderProductDetailModal() {
             const p = _pdmProduct;
-            const imageSrc = p.image ? `/thumb?f=${encodeURIComponent(p.image)}&s=600` : 'assets/defult/placeholder.png';
+            const imageSrc = p.image ? `/thumb?f=${encodeURIComponent(p.image)}&s=300` : 'assets/defult/placeholder.png';
             const img = document.getElementById('pdmImage');
             img.src = imageSrc;
             img.onerror = function() {
