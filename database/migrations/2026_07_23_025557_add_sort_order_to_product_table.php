@@ -24,6 +24,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('product', function (Blueprint $table) {
+            // SQL Server won't drop a column that still has an index on it, so drop
+            // the index first (MySQL would drop it automatically with the column).
+            $table->dropIndex(['sort_order']);
             $table->dropColumn('sort_order');
         });
     }
